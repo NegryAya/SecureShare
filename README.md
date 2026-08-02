@@ -15,7 +15,7 @@ Le projet est développé **sprint par sprint**. Ce dépôt contient actuellemen
 |--------|---------|--------|
 | **Sprint 1** | Projet Laravel, authentification complète, dashboard, structure MVC | ✅ Terminé |
 | **Sprint 2** | Upload, liste, téléchargement, suppression, partage sécurisé par lien (mot de passe + expiration), logs | ✅ Terminé |
-| Sprint 3 | Espace "Fichiers partagés" avancé, polish sécurité, éventuelle purge automatique des liens expirés | ⏳ À venir |
+| **Sprint 3** | Profil utilisateur, historique d'activité, purge automatique des liens expirés | ✅ Terminé |
 | V2 | Espace administrateur | ⏳ À venir |
 
 ---
@@ -57,6 +57,18 @@ Voir le fichier **[EXPLICATIONS.md](EXPLICATIONS.md)** pour le détail de chaque
   - Compteur de téléchargements par lien
 - **Fichiers partagés** : liste des liens créés par l'utilisateur (statut actif/expiré, révocation possible)
 - **Journalisation (logs)** : upload, download, delete, share — avec utilisateur, action, date et adresse IP
+
+---
+
+## ✅ Contenu du Sprint 3
+
+- **Profil utilisateur** : modifier prénom / nom / email, changer de mot de passe (avec vérification du mot de passe actuel)
+- **Historique d'activité** : chaque utilisateur consulte son propre journal (`logs`) — connexions, uploads, téléchargements, suppressions, partages
+- **Purge automatique** des liens de partage expirés : commande `php artisan shared-links:prune`, planifiée quotidiennement
+- **Gestion avancée des fichiers** : renommer un fichier, remplacer son contenu (même enregistrement, les liens de partage restent valides)
+- **Recherche, filtrage et tri** dans "Mes fichiers" : par nom, par type, par date/taille
+- **Statistiques enrichies** sur le tableau de bord : liens générés, liens actifs, liens expirés
+- **Interface** : icônes Bootstrap Icons, alertes améliorées, boutons d'action plus clairs
 
 ---
 

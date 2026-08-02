@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\RenameFileRequest;
 use App\Http\Requests\UploadFileRequest;
 use App\Models\File;
 use App\Models\Log;
@@ -16,15 +17,54 @@ class FileController extends Controller
 {
     /**
      * Affiche la liste des fichiers de l'utilisateur connecte ("Mes fichiers").
+     *
+     * Sprint 3 : ajoute la recherche par nom, le filtrage par type
+     * (extension) et le tri par date, sans changer le comportement de
+     * base (pagination, colonnes affichees) developpe au Sprint 2.
      */
     public function index(Request $request): View
     {
-        $files = $request->user()
-            ->files()
-            ->latest()
-            ->paginate(10);
+        $query = $request->user()->files();
 
-        return view('files.index', compact('files'));
+        // Recherche par nom de fichier (insensible a la casse).
+        if ($search = trim((string) $request->query('search'))) {
+            $query->where('original_name', 'like', '%'.$search.'%');
+        }
+
+        // Filtrage par type de fichier (extension).
+        if ($type = $request->query('type')) {
+            $query->where('extension', $type);
+        }
+
+        // Tri : date d'ajout (par defaut, plus recent d'abord), ou nom.
+        $sort = $request->query('sort', 'date_desc');
+        match ($sort) {
+            'date_asc' => $query->oldest(),
+            'name_asc' => $query->orderBy('original_name'),
+            'name_desc' => $query->orderBy('original_name', 'desc'),
+            'size_desc' => $query->orderBy('size', 'desc'),
+            default => $query->latest(),
+        };
+
+        $files = $query->paginate(10)->withQueryString();
+
+        // Types distincts possedes par l'utilisateur, pour peupler le
+        // filtre "Type" sans lister des extensions qu'il n'a jamais uploadees.
+        $availableTypes = $request->user()->files()
+            ->select('extension')
+            ->distinct()
+            ->orderBy('extension')
+            ->pluck('extension');
+
+        return view('files.index', [
+            'files' => $files,
+            'availableTypes' => $availableTypes,
+            'filters' => [
+                'search' => $search ?? '',
+                'type' => $type ?? '',
+                'sort' => $sort,
+            ],
+        ]);
     }
 
     /**
@@ -103,5 +143,67 @@ class FileController extends Controller
 
         return redirect()->route('files.index')
             ->with('status', "Le fichier « {$name} » a ete supprime.");
+    }
+
+    /**
+     * Renomme un fichier (modifie uniquement le nom affiche, jamais le
+     * fichier physique ni son extension reelle).
+     */
+    public function rename(RenameFileRequest $request, File $file): RedirectResponse
+    {
+        $this->authorize('update', $file);
+
+        $oldName = $file->original_name;
+
+        // On conserve l'extension d'origine (celle du contenu reel du
+        // fichier) meme si l'utilisateur ne la saisit pas explicitement.
+        $newName = trim($request->validated('name'));
+        if (! str_ends_with(strtolower($newName), '.'.strtolower($file->extension))) {
+            $newName .= '.'.$file->extension;
+        }
+
+        $file->update(['original_name' => $newName]);
+
+        Log::record(Log::ACTION_RENAME, $request->user()->id);
+
+        return redirect()->route('files.index')
+            ->with('status', "Le fichier « {$oldName} » a ete renomme en « {$newName} ».");
+    }
+
+    /**
+     * Remplace le contenu d'un fichier existant tout en conservant le
+     * meme enregistrement (meme ID) : les liens de partage deja crees
+     * pour ce fichier restent donc valides et pointent vers le nouveau
+     * contenu, sans que l'utilisateur ait besoin de les regenerer.
+     */
+    public function replace(UploadFileRequest $request, File $file): RedirectResponse
+    {
+        $this->authorize('update', $file);
+
+        $uploaded = $request->file('file');
+        $extension = strtolower($uploaded->getClientOriginalExtension());
+        $storedName = Str::uuid()->toString().'.'.$extension;
+        $directory = 'files/'.$request->user()->id;
+
+        $newPath = $uploaded->storeAs($directory, $storedName, File::DISK);
+
+        // On supprime l'ancien fichier physique seulement une fois le
+        // nouveau bien enregistre, pour ne jamais se retrouver sans
+        // fichier valide en cas d'erreur pendant l'upload.
+        Storage::disk(File::DISK)->delete($file->storage_path);
+
+        $file->update([
+            'original_name' => $uploaded->getClientOriginalName(),
+            'stored_name' => $storedName,
+            'extension' => $extension,
+            'mime_type' => $uploaded->getMimeType(),
+            'size' => $uploaded->getSize(),
+            'storage_path' => $newPath,
+        ]);
+
+        Log::record(Log::ACTION_REPLACE, $request->user()->id);
+
+        return redirect()->route('files.index')
+            ->with('status', "Le fichier « {$file->original_name} » a ete remplace avec succes.");
     }
 }

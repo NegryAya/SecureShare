@@ -39,4 +39,12 @@ class FilePolicy
     {
         return $user->id === $file->user_id;
     }
+
+    /**
+     * L'utilisateur peut-il modifier ce fichier (renommer / remplacer le contenu) ?
+     */
+    public function update(User $user, File $file): bool
+    {
+        return $user->id === $file->user_id;
+    }
 }

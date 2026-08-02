@@ -2,17 +2,22 @@
 
 @section('content')
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0">Fichiers partages</h2>
-        <a href="{{ route('files.index') }}" class="btn btn-outline-secondary btn-sm">&larr; Mes fichiers</a>
+        <h2 class="mb-0"><i class="bi bi-share-fill me-2"></i>Fichiers partages</h2>
+        <a href="{{ route('files.index') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Mes fichiers
+        </a>
     </div>
 
     @if (session('shared_link_url'))
-        <div class="alert alert-success">
-            <div class="fw-semibold mb-1">Lien de partage genere :</div>
+        <div class="alert alert-success alert-dismissible fade show">
+            <div class="fw-semibold mb-1"><i class="bi bi-check-circle"></i> Lien de partage genere :</div>
             <div class="input-group">
                 <input type="text" class="form-control" value="{{ session('shared_link_url') }}" id="newShareLink" readonly>
-                <button class="btn btn-outline-secondary" type="button" onclick="copyShareLink()">Copier</button>
+                <button class="btn btn-outline-secondary" type="button" onclick="copyShareLink()">
+                    <i class="bi bi-clipboard"></i> Copier
+                </button>
             </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
 
@@ -43,16 +48,16 @@
                                     <td class="text-break">{{ $link->file->original_name }}</td>
                                     <td>
                                         @if ($link->isExpired())
-                                            <span class="badge bg-danger">Expire</span>
+                                            <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Expire</span>
                                         @else
-                                            <span class="badge bg-success">Actif</span>
+                                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Actif</span>
                                         @endif
                                     </td>
                                     <td>
                                         @if ($link->hasPassword())
-                                            <span class="badge bg-warning text-dark">Mot de passe</span>
+                                            <span class="badge bg-warning text-dark"><i class="bi bi-lock-fill"></i> Mot de passe</span>
                                         @else
-                                            <span class="badge bg-light text-dark border">Libre</span>
+                                            <span class="badge bg-light text-dark border"><i class="bi bi-unlock"></i> Libre</span>
                                         @endif
                                     </td>
                                     <td>
@@ -61,15 +66,17 @@
                                     <td>{{ $link->downloads }}</td>
                                     <td class="text-end">
                                         <div class="btn-group btn-group-sm">
-                                            <button type="button" class="btn btn-outline-secondary"
+                                            <button type="button" class="btn btn-outline-secondary" title="Copier le lien"
                                                     onclick="navigator.clipboard.writeText('{{ $link->url }}')">
-                                                Copier le lien
+                                                <i class="bi bi-clipboard"></i>
                                             </button>
                                             <form method="POST" action="{{ route('shared-links.destroy', $link) }}"
                                                   onsubmit="return confirm('Revoquer ce lien de partage ?');">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="btn btn-outline-danger">Revoquer</button>
+                                                <button type="submit" class="btn btn-outline-danger" title="Revoquer">
+                                                    <i class="bi bi-x-lg"></i>
+                                                </button>
                                             </form>
                                         </div>
                                     </td>

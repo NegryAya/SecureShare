@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $title ?? 'Dashboard' }} - SecureShare</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
         body { background-color: #f4f6f9; }
         .navbar-brand { font-weight: 700; letter-spacing: -0.5px; }
@@ -44,14 +45,29 @@
                 </ul>
 
                 <ul class="navbar-nav ms-auto align-items-lg-center">
-                    <li class="nav-item me-lg-3 text-white-50 small">
-                        Connecte en tant que <strong class="text-white">{{ auth()->user()->full_name }}</strong>
-                    </li>
-                    <li class="nav-item">
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <button type="submit" class="btn btn-outline-light btn-sm">Deconnexion</button>
-                        </form>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            👤 {{ auth()->user()->full_name }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item {{ request()->routeIs('profile.edit') ? 'active' : '' }}" href="{{ route('profile.edit') }}">
+                                    Mon profil
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {{ request()->routeIs('activity.index') ? 'active' : '' }}" href="{{ route('activity.index') }}">
+                                    Historique d'activite
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit" class="dropdown-item text-danger">Deconnexion</button>
+                                </form>
+                            </li>
+                        </ul>
                     </li>
                 </ul>
             </div>

@@ -4,8 +4,10 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FileController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ShareController;
 use App\Http\Controllers\SharedLinkController;
 use Illuminate\Support\Facades\Route;
@@ -89,6 +91,10 @@ Route::middleware('auth')->group(function () {
         ->name('files.download');
     Route::delete('files/{file}', [FileController::class, 'destroy'])
         ->name('files.destroy');
+    Route::put('files/{file}/rename', [FileController::class, 'rename'])
+        ->name('files.rename');
+    Route::put('files/{file}/replace', [FileController::class, 'replace'])
+        ->name('files.replace');
 
     /*
     |----------------------------------------------------------------------
@@ -101,4 +107,24 @@ Route::middleware('auth')->group(function () {
         ->name('files.share');
     Route::delete('shared-links/{sharedLink}', [SharedLinkController::class, 'destroy'])
         ->name('shared-links.destroy');
+
+    /*
+    |----------------------------------------------------------------------
+    | Profil utilisateur (Sprint 3)
+    |----------------------------------------------------------------------
+    */
+    Route::get('profile', [ProfileController::class, 'edit'])
+        ->name('profile.edit');
+    Route::put('profile', [ProfileController::class, 'update'])
+        ->name('profile.update');
+    Route::put('profile/password', [ProfileController::class, 'updatePassword'])
+        ->name('profile.password');
+
+    /*
+    |----------------------------------------------------------------------
+    | Historique d'activite (Sprint 3)
+    |----------------------------------------------------------------------
+    */
+    Route::get('activity', [ActivityLogController::class, 'index'])
+        ->name('activity.index');
 });

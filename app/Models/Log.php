@@ -37,6 +37,8 @@ class Log extends Model
     public const ACTION_DOWNLOAD = 'download';
     public const ACTION_DELETE = 'delete';
     public const ACTION_SHARE = 'share';
+    public const ACTION_RENAME = 'rename';
+    public const ACTION_REPLACE = 'replace';
 
     /**
      * Une entree de log appartient a un utilisateur (peut etre nulle).

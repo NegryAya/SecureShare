@@ -218,3 +218,115 @@ Lancer avec : `php artisan test`
 | ✅ CSRF | `@csrf` sur tous les formulaires (upload, delete, share, password) |
 | ✅ File Size Validation | Règle `max:20480` (20 Mo) |
 | ✅ MIME Validation | Règle `mimes:` (vérifie le type réel, pas seulement l'extension) |
+
+---
+
+# Sprint 3 — Profil, historique, purge automatique
+
+## 1. Profil utilisateur
+
+| Fichier | Rôle |
+|---|---|
+| `Requests/ProfileUpdateRequest.php` | Valide prénom/nom/email (unique, en ignorant l'utilisateur courant lui-même grâce à `Rule::unique(...)->ignore()`). |
+| `Controllers/ProfileController.php` | `edit()` affiche le profil. `update()` modifie les informations. `updatePassword()` change le mot de passe **après vérification du mot de passe actuel** (règle native Laravel `current_password`, qui empêche qu'une session laissée ouverte permette de changer le mot de passe sans le connaître). |
+| `views/profile/edit.blade.php` | Deux formulaires distincts (informations / mot de passe), chacun avec sa propre gestion d'erreurs. |
+
+## 2. Historique d'activité
+
+| Fichier | Rôle |
+|---|---|
+| `Controllers/ActivityLogController.php` | Affiche uniquement les logs de l'utilisateur connecté (`$request->user()->logs()`), jamais ceux des autres utilisateurs. |
+| `views/activity/index.blade.php` | Tableau paginé avec badges colorés par type d'action (connexion, upload, téléchargement, suppression, partage). |
+
+## 3. Purge automatique des liens expirés
+
+| Fichier | Rôle |
+|---|---|
+| `Console/Commands/PruneExpiredSharedLinks.php` | Commande `php artisan shared-links:prune` : supprime les liens dont `expires_at` est dépassé (les liens sans expiration ne sont jamais touchés). |
+| `routes/console.php` | Planifie la commande pour qu'elle s'exécute automatiquement **une fois par jour** (`Schedule::command('shared-links:prune')->daily()`). Nécessite qu'une tâche cron unique tourne sur le serveur (voir `INSTALL.md`). |
+
+Cette commande est un complément de sécurité/propreté : même sans elle, un
+lien expiré est déjà refusé par `ShareController` (vérification à chaque
+accès) — la purge sert simplement à nettoyer la base de données.
+
+## 4. Navigation
+
+`layouts/app.blade.php` : le nom de l'utilisateur dans la barre de
+navigation devient un menu déroulant donnant accès à "Mon profil",
+"Historique d'activité" et "Déconnexion".
+
+## 5. Tests (`tests/Feature/`)
+
+| Fichier | Couverture |
+|---|---|
+| `ProfileTest.php` | Accès protégé, mise à jour des informations, email déjà pris, changement de mot de passe (bon/mauvais mot de passe actuel). |
+| `ActivityLogTest.php` | Accès protégé, isolation stricte des logs entre utilisateurs. |
+| `PruneExpiredSharedLinksTest.php` | Vérifie que seuls les liens réellement expirés sont supprimés. |
+
+---
+
+# Sprint 3 (enrichi) — Gestion avancée des fichiers
+
+## 1. Autorisation
+
+`FilePolicy` reçoit une nouvelle règle **`update`** (même logique que
+`view`/`share`/`delete` : `$user->id === $file->user_id`), utilisée par les
+actions de renommage et de remplacement. Aucune règle existante n'est
+modifiée.
+
+## 2. Renommer un fichier
+
+| Fichier | Rôle |
+|---|---|
+| `Requests/RenameFileRequest.php` | Valide le nouveau nom (obligatoire, 245 caractères max, interdit `/` et `\` pour éviter toute tentative de path traversal). |
+| `FileController::rename()` | Vérifie la Policy `update`, conserve automatiquement l'extension réelle du fichier même si l'utilisateur ne la saisit pas, journalise l'action `rename`. |
+| Route `PUT files/{file}/rename` | Nom : `files.rename`. |
+
+Seul le nom **affiché** (`original_name`) change : le fichier physique sur
+le disque, son extension réelle et son contenu ne sont jamais modifiés.
+
+## 3. Remplacer le contenu d'un fichier
+
+| Fichier | Rôle |
+|---|---|
+| `FileController::replace()` | Réutilise **`UploadFileRequest`** (même validation extension/MIME/taille que l'upload initial — aucune règle dupliquée). Stocke le nouveau fichier, supprime l'ancien seulement après succès de l'upload (pour ne jamais perdre les deux), met à jour l'enregistrement existant **sans changer son ID**. |
+| Route `PUT files/{file}/replace` | Nom : `files.replace`. |
+
+Point important : comme l'ID du fichier ne change pas, les **liens de
+partage déjà créés restent valides** après un remplacement — l'utilisateur
+n'a pas besoin de regénérer ses liens.
+
+## 4. Recherche, filtrage et tri (`FileController::index()`)
+
+La méthode `index()` accepte désormais trois paramètres de requête (GET) :
+- `search` : recherche sur `original_name` (`LIKE %terme%`)
+- `type` : filtre exact sur la colonne `extension`
+- `sort` : `date_desc` (défaut), `date_asc`, `name_asc`, `name_desc`, `size_desc`
+
+Ces filtres s'appliquent **toujours** sur `$request->user()->files()`,
+c'est-à-dire uniquement sur les fichiers du propriétaire connecté — un
+utilisateur ne peut ni chercher ni filtrer les fichiers d'un autre compte.
+`withQueryString()` conserve les filtres actifs lors de la pagination.
+
+## 5. Statistiques du tableau de bord (`DashboardController`)
+
+Trois nouvelles statistiques, calculées uniquement sur les liens de
+partage des fichiers de l'utilisateur connecté (`whereHas('file', ...)`) :
+- `links_total` : nombre total de liens générés
+- `links_active` : liens non expirés (sans date d'expiration OU date future)
+- `links_expired` : liens dont la date d'expiration est dépassée
+
+## 6. Interface
+
+- Ajout de **Bootstrap Icons** (CDN) sur les layouts `app` et `guest`.
+- `dashboard/index.blade.php` : 6 cartes de statistiques avec icônes, tableau des derniers fichiers avec badges de type et lien "Voir tous mes fichiers".
+- `files/index.blade.php` : barre de recherche/filtre/tri, boutons d'action avec icônes (télécharger, renommer, remplacer, partager, supprimer), modales "Renommer" et "Remplacer" (sur le même modèle que la modale "Partager" du Sprint 2).
+- `shared-links/index.blade.php` : badges avec icônes (Actif/Expiré, Mot de passe/Libre), boutons d'action avec icônes.
+
+## 7. Tests (`tests/Feature/FileEnhancementsTest.php`)
+
+Couvre : renommage (succès, autorisation, rejet des noms avec `/`),
+remplacement (succès, ancien fichier physique supprimé, ID conservé donc
+liens de partage intacts, autorisation, validation MIME/extension),
+recherche par nom, filtrage par type, isolation stricte entre utilisateurs,
+et exactitude des statistiques de liens sur le tableau de bord.

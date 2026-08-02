@@ -140,6 +140,23 @@ Pour tester le partage :
 2. Allez sur **Mes fichiers**, cliquez sur **Partager**, choisissez une expiration et (optionnellement) un mot de passe
 3. Le lien généré apparaît sur la page **Fichiers partagés** — copiez-le et ouvrez-le dans une navigation privée pour vérifier qu'il fonctionne sans être connecté
 
+## 13. Sprint 3 — Profil, historique, purge automatique
+
+Aucune migration supplémentaire n'est requise (le schéma était déjà prêt).
+
+Pour que la purge automatique des liens expirés fonctionne
+(`shared-links:prune`, planifiée quotidiennement), ajoutez cette ligne au
+crontab de votre serveur (inutile en local pour simplement tester
+l'application) :
+```
+* * * * * cd /chemin/vers/secureshare && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Vous pouvez aussi lancer la purge manuellement à tout moment :
+```bash
+php artisan shared-links:prune
+```
+
 ## Dépannage courant
 
 | Problème | Solution |
